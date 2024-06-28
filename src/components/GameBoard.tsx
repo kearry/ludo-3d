@@ -1,5 +1,5 @@
-import React from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import React, { useEffect } from 'react'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '@/lib/gameState'
@@ -19,7 +19,17 @@ function Token({ position, color, onClick }: { position: number, color: string, 
 }
 
 function LudoBoard() {
-  const { players, currentPlayer, dice, moveToken, rollDice, canMoveToken } = useGameStore()
+  const { players, currentPlayer, dice, moveToken, rollDice, playAITurn } = useGameStore()
+
+  useEffect(() => {
+    if (players[currentPlayer]?.isAI) {
+      const aiTurnTimeout = setTimeout(() => {
+        playAITurn()
+      }, 1000) // Delay AI move by 1 second for better visibility
+
+      return () => clearTimeout(aiTurnTimeout)
+    }
+  }, [currentPlayer, players, playAITurn])
 
   const boardGeometry = new THREE.BoxGeometry(10, 0.5, 10)
   const boardMaterial = new THREE.MeshStandardMaterial({ color: 'white' })
@@ -53,7 +63,7 @@ function LudoBoard() {
             position={position} 
             color={player.color} 
             onClick={() => {
-              if (playerIndex === currentPlayer && canMoveToken(player.id, tokenIndex)) {
+              if (playerIndex === currentPlayer && !player.isAI) {
                 moveToken(player.id, tokenIndex)
               }
             }}
@@ -61,7 +71,7 @@ function LudoBoard() {
         ))
       )}
       <Text position={[0, 2, 0]} color="black" fontSize={0.5}>
-        Current Player: {players[currentPlayer]?.color}
+        Current Player: {players[currentPlayer]?.color} ({players[currentPlayer]?.isAI ? 'AI' : 'Human'})
       </Text>
       <Text position={[0, 1.5, 0]} color="black" fontSize={0.5}>
         Dice: {dice[0]}, {dice[1]}
@@ -72,6 +82,8 @@ function LudoBoard() {
 
 export default function GameBoard() {
   const rollDice = useGameStore(state => state.rollDice)
+  const currentPlayer = useGameStore(state => state.currentPlayer)
+  const players = useGameStore(state => state.players)
 
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
@@ -81,7 +93,13 @@ export default function GameBoard() {
         <LudoBoard />
         <OrbitControls />
       </Canvas>
-      <button onClick={rollDice} style={{ position: 'absolute', bottom: 20, right: 20 }}>Roll Dice</button>
+      <button 
+        onClick={rollDice} 
+        style={{ position: 'absolute', bottom: 20, right: 20 }}
+        disabled={players[currentPlayer]?.isAI}
+      >
+        Roll Dice
+      </button>
     </div>
   )
 }
