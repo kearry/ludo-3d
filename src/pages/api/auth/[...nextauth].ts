@@ -1,11 +1,15 @@
-import NextAuth from "next-auth"
-import GoogleProvider from "next-auth/providers/google"
-import GithubProvider from "next-auth/providers/github"
-import CredentialsProvider from "next-auth/providers/credentials"
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
-import prisma from "@/lib/prisma"
+//src/pages/api/auth/[...nextauth].ts
+import NextAuth, { Account, AuthOptions, Profile } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import GithubProvider from "next-auth/providers/github";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import prisma from "@/lib/prisma";
+import { JWT } from "next-auth/jwt";
+import { User } from "@prisma/client";
+import { AdapterUser } from "next-auth/adapters";
 
-export default NextAuth({
+export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -23,14 +27,79 @@ export default NextAuth({
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Add your own logic here to find the user from your database
         if (credentials?.username === "admin" && credentials?.password === "password") {
-          return { id: "1", name: "Admin", email: "admin@example.com" }
+          return { id: "1", name: "Admin", email: "admin@example.com" };
         }
-        return null
+        return null;
       }
     })
   ],
-  // Add your own secret here. This is used to sign cookies and should be kept secret.
+  session: {
+    strategy: "jwt",
+  },
+  jwt: {
+    secret: process.env.NEXTAUTH_SECRET,
+  },
   secret: process.env.NEXTAUTH_SECRET,
-})
+  pages: {
+    signIn: '/login',
+  },
+  callbacks: {
+    async jwt({ token, user, account, profile, isNewUser, trigger }: { token: JWT, user: User | AdapterUser, account: Account | null, profile?: Profile | undefined, isNewUser?: boolean, trigger?: "signIn" | "signUp" | "update" | undefined }) {
+      console.log('JWT callback invoked');
+      console.log('Token before:', token);
+      console.log('User:', user);
+      console.log('Account:', account);
+      console.log('Profile:', profile);
+      console.log('IsNewUser:', isNewUser);
+      console.log('Trigger:', trigger);
+      console.log('----------------------------------------------------------------------------');
+
+      if (user) {
+        token.id = user.id;
+        token.user = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+        };
+      } else if (account) {
+        token.id = account.id;
+        token.user = {
+          id: account.id,
+          name: profile?.name,
+          email: profile?.email,
+          image: profile?.image,
+        };
+      }
+
+      console.log('Token after:', token);
+      return token;
+    },
+    async session({ session, token }: { session: any, token: any }) {
+      console.log('Session callback invoked');
+      console.log('Session before:', session);
+      console.log('Token:', token);
+      console.log('----------------------------------------------------------------------------');
+
+      if (token.id) {
+        session.user.id = token.id;
+      }
+
+      if (token.user) {
+        session.user = {
+          ...session.user,
+          id: token.user.id,
+          name: token.user.name,
+          email: token.user.email,
+          image: token.user.image,
+        };
+      }
+
+      console.log('Session after:', session);
+      return session;
+    },
+  }
+};
+
+export default NextAuth(authOptions);

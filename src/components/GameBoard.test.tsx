@@ -5,9 +5,16 @@ import { useGameStore } from '@/lib/gameState'
 
 // Mock the Three.js components and hooks
 jest.mock('@react-three/fiber', () => ({
-  Canvas: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  useFrame: () => {},
-}))
+    Canvas: ({ children }: { children: React.ReactNode }) => <div data-testid="canvas-mock">{children}</div>,
+    useFrame: () => {},
+  }))
+
+  jest.mock('three', () => ({
+    ...jest.requireActual('three'),
+    Mesh: function Mesh({ children, 'data-testid': testid }) {
+      return <div data-testid={testid}>{children}</div>
+    },
+  }))
 
 jest.mock('@react-three/drei', () => ({
   OrbitControls: () => null,
@@ -70,5 +77,94 @@ describe('GameBoard', () => {
     expect(rollButton).toBeInTheDocument()
   })
 
-  // Add more tests as needed
+  test('renders correct number of tokens for each player', () => {
+  useGameStore.setState({
+    players: [
+      { id: '1', color: 'red', tokens: [0, 0, 0, 0], isAI: false },
+      { id: '2', color: 'blue', tokens: [0, 0, 0, 0], isAI: true }
+    ]
+  })
+  render(<GameBoard />)
+  const tokens = screen.getAllByTestId('player-token')
+  expect(tokens).toHaveLength(8) // 4 tokens per player, 2 players
+})
+
+  test('displays correct dice values', () => {
+    useGameStore.setState({ dice: [3, 4] })
+    render(<GameBoard />)
+    expect(screen.getByText('3')).toBeInTheDocument()
+    expect(screen.getByText('4')).toBeInTheDocument()
+  })
+
+  test('rolls dice on left click', () => {
+    const rollDiceMock = jest.fn()
+    useGameStore.setState({ rollDice: rollDiceMock })
+    render(<GameBoard />)
+    fireEvent.click(screen.getByTestId('game-board'))
+    expect(rollDiceMock).toHaveBeenCalled()
+  })
+
+  test('moves token on right click', () => {
+    const moveTokenMock = jest.fn()
+    useGameStore.setState({ moveToken: moveTokenMock })
+    render(<GameBoard />)
+    fireEvent.contextMenu(screen.getByTestId('game-board'))
+    expect(moveTokenMock).toHaveBeenCalledWith(0, 0, 1)
+  })
+  jest.mock('@/lib/gameState', () => ({
+    useGameStore: jest.fn(),
+  }))
+  
+  const mockUseGameStore = useGameStore as jest.MockedFunction<typeof useGameStore>
+  
+  describe('GameBoard', () => {
+    beforeEach(() => {
+      mockUseGameStore.mockImplementation(() => ({
+        players: [
+          { id: '1', color: 'red', tokens: [0, 0, 0, 0], isAI: false },
+          { id: '2', color: 'blue', tokens: [0, 0, 0, 0], isAI: true }
+        ],
+        dice: [0, 0],
+        rollDice: jest.fn(),
+        moveToken: jest.fn(),
+      }))
+    })
+  
+    test('renders correct number of tokens for each player', () => {
+      render(<GameBoard />)
+      const tokens = screen.getAllByTestId('player-token')
+      expect(tokens).toHaveLength(8) // 4 tokens per player, 2 players
+    })
+  
+    test('renders tokens in correct initial positions', () => {
+      render(<GameBoard />)
+      const tokens = screen.getAllByTestId('player-token')
+      tokens.forEach((token) => {
+        const position = JSON.parse(token.getAttribute('data-position') || '[]')
+        expect(position).toEqual([-4, 0.3, -4]) // All tokens start at the same position
+      })
+    })
+  
+    test('renders dice with correct values', () => {
+      mockUseGameStore.mockImplementation(() => ({
+        ...mockUseGameStore.getMockImplementation()!(),
+        dice: [3, 4],
+      }))
+      render(<GameBoard />)
+      expect(screen.getByText('3')).toBeInTheDocument()
+      expect(screen.getByText('4')).toBeInTheDocument()
+    })
+  
+    test('calls rollDice when board is clicked', () => {
+      const mockRollDice = jest.fn()
+      mockUseGameStore.mockImplementation(() => ({
+        ...mockUseGameStore.getMockImplementation()!(),
+        rollDice: mockRollDice,
+      }))
+      render(<GameBoard />)
+      fireEvent.click(screen.getByTestId('canvas-mock'))
+      expect(mockRollDice).toHaveBeenCalled()
+    })
+  })
+
 })

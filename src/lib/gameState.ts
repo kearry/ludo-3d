@@ -6,35 +6,95 @@ export type Player = {
   color: 'red' | 'green' | 'yellow' | 'blue'
   tokens: number[]
   isAI: boolean
+  startPosition: number
 }
 
 type GameState = {
   players: Player[]
   currentPlayer: number
   dice: number[]
+  winner: string | null
   addPlayer: (player: Player) => void
   rollDice: () => void
   moveToken: (playerId: string, tokenIndex: number) => GameState
   canMoveToken: (playerId: string, tokenIndex: number) => boolean
   playAITurn: () => void
+  checkWinCondition: () => void
 }
 
-const BOARD_SIZE = 52
+const BOARD_SIZE = 48
 const HOME_ENTRANCE = 50
+const HOME_STEPS = 6
 
 export const useGameStore = create<GameState>((set, get) => ({
   players: [],
   currentPlayer: 0,
   dice: [0, 0],
-  
-  addPlayer: (player: Player) => set((state) => ({ 
-    players: [...state.players, player] 
+  winner: null,
+
+  createGame: async () => {
+    try {
+      console.log('Creating new game...')
+      const response = await fetch('/api/game', {
+        method: 'POST',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to create game')
+      }
+      const game = await response.json()
+      console.log('Game created:', game)
+      set({
+        gameId: game.id,
+        players: game.players.map((p: any) => ({
+          ...p,
+          tokens: p.tokens.split(',').map(Number),
+          startPosition: game.players.findIndex((player: any) => player.id === p.id) * 12,
+        })),
+        currentPlayer: game.currentPlayer,
+        dice: game.dice.split(',').map(Number),
+      })
+    } catch (error) {
+      console.error('Error creating game:', error)
+      throw error
+    }
+  },
+
+  loadGame: async (gameId: string) => {
+    try {
+      console.log('Loading game:', gameId)
+      const response = await fetch(`/api/game?id=${gameId}`)
+      if (!response.ok) {
+        throw new Error('Failed to load game')
+      }
+      const game = await response.json()
+      console.log('Game loaded:', game)
+      set({
+        gameId: game.id,
+        players: game.players.map((p: any) => ({
+          ...p,
+          tokens: p.tokens.split(',').map(Number),
+          startPosition: game.players.findIndex((player: any) => player.id === p.id) * 12,
+        })),
+        currentPlayer: game.currentPlayer,
+        dice: game.dice.split(',').map(Number),
+      })
+    } catch (error) {
+      console.error('Error loading game:', error)
+      throw error
+    }
+  },
+
+  addPlayer: (player: Player) => set((state) => ({
+    players: [...state.players, {
+      ...player,
+      startPosition: state.players.length * 12
+    }]
   })),
-  
-  rollDice: () => set({ 
-    dice: [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1] 
+
+  rollDice: () => set({
+    dice: [Math.floor(Math.random() * 6) + 1, Math.floor(Math.random() * 6) + 1]
   }),
-  
+
   canMoveToken: (playerId: string, tokenIndex: number) => {
     const state = get()
     const player = state.players.find(p => p.id === playerId)
@@ -44,16 +104,21 @@ export const useGameStore = create<GameState>((set, get) => ({
     const tokenPosition = player.tokens[tokenIndex]
 
     // Can move out of base if any dice is 6
-    if (tokenPosition === 0 && state.dice.includes(6)) return true
+    if (tokenPosition === -1 && state.dice.includes(6)) return true
 
     // Can't move if token is already home
-    if (tokenPosition > HOME_ENTRANCE) return false
+    if (tokenPosition >= HOME_ENTRANCE + HOME_STEPS) return false
 
     // For tokens not in base, check if the move is valid
-    if (tokenPosition > 0) {
-      const newPosition = (tokenPosition + diceSum - 1) % BOARD_SIZE + 1
-      const isBlocked = state.players.some(p => 
-        p.id !== playerId && 
+    if (tokenPosition >= 0) {
+      let newPosition = (tokenPosition + diceSum) % BOARD_SIZE
+      if (newPosition >= HOME_ENTRANCE) {
+        newPosition = HOME_ENTRANCE + (newPosition - HOME_ENTRANCE)
+        if (newPosition > HOME_ENTRANCE + HOME_STEPS) return false
+      }
+
+      const isBlocked = state.players.some(p =>
+        p.id !== playerId &&
         p.tokens.filter(t => t === newPosition).length >= 2
       )
       return !isBlocked
@@ -61,7 +126,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     return false
   },
-  
+
   moveToken: (playerId: string, tokenIndex: number): GameState => {
     const state = get()
     if (!get().canMoveToken(playerId, tokenIndex)) {
@@ -78,16 +143,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     let newPosition = newPlayers[playerIndex].tokens[tokenIndex]
 
     // If token is in base and one of the dice is 6, move it out
-    if (newPosition === 0 && state.dice.includes(6)) {
-      newPosition = 1
-    } else if (newPosition > 0) {
-      newPosition = (newPosition + diceSum - 1) % BOARD_SIZE + 1
-      if (newPosition === 0) newPosition = BOARD_SIZE  // Ensure we don't go back to 0
-    }
-
-    // Check if token is entering home
-    if (newPosition > HOME_ENTRANCE && newPlayers[playerIndex].tokens[tokenIndex] <= HOME_ENTRANCE) {
-      newPosition = HOME_ENTRANCE + (newPosition - HOME_ENTRANCE)
+    if (newPosition === -1 && state.dice.includes(6)) {
+      newPosition = newPlayers[playerIndex].startPosition
+    } else if (newPosition >= 0) {
+      newPosition = (newPosition + diceSum) % BOARD_SIZE
+      if (newPosition >= HOME_ENTRANCE) {
+        newPosition = HOME_ENTRANCE + (newPosition - HOME_ENTRANCE)
+        if (newPosition > HOME_ENTRANCE + HOME_STEPS) {
+          newPosition = HOME_ENTRANCE + HOME_STEPS
+        }
+      }
     }
 
     newPlayers[playerIndex].tokens[tokenIndex] = newPosition
@@ -96,22 +161,26 @@ export const useGameStore = create<GameState>((set, get) => ({
     newPlayers.forEach((player: Player, idx: number) => {
       if (idx !== playerIndex) {
         player.tokens = player.tokens.map((token: number) => {
-          if (token === newPosition && token !== 0 && token !== 1) {
-            return 0
+          if (token === newPosition && token !== -1 && token < HOME_ENTRANCE) {
+            return -1 // Kick back to base
           }
           return token
         })
       }
     })
 
-    return { 
+    const newState = {
       ...state,
-      players: newPlayers, 
+      players: newPlayers,
       currentPlayer: state.dice.includes(6) ? state.currentPlayer : (state.currentPlayer + 1) % state.players.length,
       dice: [0, 0]  // Reset dice after move
     }
+
+    get().checkWinCondition()
+
+    return newState
   },
-  
+
   playAITurn: () => {
     set((state) => {
       const currentPlayer = state.players[state.currentPlayer];
@@ -121,31 +190,27 @@ export const useGameStore = create<GameState>((set, get) => ({
       const newDice = get().dice;
       console.log(`AI Turn: Rolled dice ${newDice[0]}, ${newDice[1]}`);
 
-      let newState = {...state, dice: newDice};
+      let newState = { ...state, dice: newDice };
 
-      // If a 6 is rolled and there's a token in base, always move it out
-      if (newDice.includes(6) && currentPlayer.tokens.includes(0)) {
-        const baseTokenIndex = currentPlayer.tokens.findIndex(t => t === 0);
-        console.log(`AI Turn: Moving token ${baseTokenIndex} out of base`);
-        newState = get().moveToken(currentPlayer.id, baseTokenIndex);
-      } else {
-        // Find the furthest token that can be moved
-        const movableTokens = currentPlayer.tokens
-          .map((pos, index) => ({ pos, index }))
-          .filter(({ pos }) => pos > 0 && pos <= HOME_ENTRANCE)
-          .sort((a, b) => b.pos - a.pos);
-
-        for (const { index } of movableTokens) {
-          if (get().canMoveToken(currentPlayer.id, index)) {
-            console.log(`AI Turn: Moving token ${index}`);
-            newState = get().moveToken(currentPlayer.id, index);
-            break;
-          }
-        }
+      const moveResult = makeAIMove(currentPlayer, newDice);
+      if (moveResult !== -1) {
+        newState = get().moveToken(currentPlayer.id, moveResult);
       }
 
       console.log('AI Turn: New state', JSON.stringify(newState, null, 2));
       return newState;
+    });
+  },
+
+  checkWinCondition: () => {
+    set((state) => {
+      const winner = state.players.find(player =>
+        player.tokens.every(token => token >= HOME_ENTRANCE + HOME_STEPS)
+      );
+      if (winner) {
+        return { ...state, winner: winner.id };
+      }
+      return state;
     });
   }
 }))

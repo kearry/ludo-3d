@@ -1,23 +1,27 @@
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
+import { useRouter } from 'next/router'
+import { useEffect } from 'react'
+import { Button } from '@/components/ui/button'
 import React from "react"
 
 export default function Login() {
+  const { data: session } = useSession()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (session) {
+      router.push('/game')
+    }
+  }, [session, router])
+
   return (
-    <div>
-      <h1>Login</h1>
-      <button onClick={() => signIn("google")}>Sign in with Google</button>
-      <button onClick={() => signIn("github")}>Sign in with GitHub</button>
-      <form onSubmit={(e) => {
-        e.preventDefault()
-        const form = e.target as HTMLFormElement
-        const username = (form.elements.namedItem('username') as HTMLInputElement).value
-        const password = (form.elements.namedItem('password') as HTMLInputElement).value
-        signIn("credentials", { username, password })
-      }}>
-        <input name="username" type="text" placeholder="Username" />
-        <input name="password" type="password" placeholder="Password" />
-        <button type="submit">Sign in with Credentials</button>
-      </form>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <h1 className="text-4xl font-bold mb-8">Sign In</h1>
+      <div className="space-y-4">
+        <Button onClick={() => signIn("google")}>Sign in with Google</Button>
+        <Button onClick={() => signIn("github")}>Sign in with GitHub</Button>
+        <Button onClick={() => signIn("credentials", { callbackUrl: '/game' })}>Sign in with Credentials</Button>
+      </div>
     </div>
   )
 }
