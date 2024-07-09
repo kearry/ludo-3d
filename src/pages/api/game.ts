@@ -75,10 +75,10 @@ async function handleGet(req: NextApiRequest, res: NextApiResponse, session: any
 
 async function handlePut(req: NextApiRequest, res: NextApiResponse, session: any) {
     try {
-        const gameId = req.query.id as string;
-        const { currentPlayer, dice, players } = req.body;
+        const { id } = req.query
+        const { currentPlayer, dice, players } = req.body
         const game = await prisma.game.update({
-            where: { id: gameId },
+            where: { id: id as string },
             data: {
                 currentPlayer,
                 dice: dice.join(','),
@@ -86,16 +86,16 @@ async function handlePut(req: NextApiRequest, res: NextApiResponse, session: any
                     updateMany: players.map((player: any) => ({
                         where: { id: player.id },
                         data: {
-                            tokens: player.tokens.join(','),
+                            tokens: player.tokens.join(','), // Join the tokens array here
                         },
                     })),
                 },
             },
             include: { players: true },
-        });
-        res.status(200).json(game);
+        })
+        res.status(200).json(game)
     } catch (error) {
-        console.error('Error updating game:', error);
-        res.status(500).json({ error: 'Error updating game' });
+        console.error('Error updating game:', error)
+        res.status(500).json({ error: 'Error updating game' })
     }
 }

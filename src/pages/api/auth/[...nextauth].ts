@@ -1,13 +1,12 @@
 //src/pages/api/auth/[...nextauth].ts
-import NextAuth, { Account, AuthOptions, Profile } from "next-auth";
+import NextAuth, { AuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
-import { JWT } from "next-auth/jwt";
-import { User } from "@prisma/client";
-import { AdapterUser } from "next-auth/adapters";
+
+
 
 export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -45,15 +44,15 @@ export const authOptions: AuthOptions = {
     signIn: '/login',
   },
   callbacks: {
-    async jwt({ token, user, account, profile, isNewUser, trigger }: { token: JWT, user: User | AdapterUser, account: Account | null, profile?: Profile | undefined, isNewUser?: boolean, trigger?: "signIn" | "signUp" | "update" | undefined }) {
-      console.log('JWT callback invoked');
-      console.log('Token before:', token);
-      console.log('User:', user);
-      console.log('Account:', account);
-      console.log('Profile:', profile);
-      console.log('IsNewUser:', isNewUser);
-      console.log('Trigger:', trigger);
-      console.log('----------------------------------------------------------------------------');
+    async jwt({ token, user, account, profile }) {
+        // console.log('JWT callback invoked');
+      // console.log('Token before:', token);
+      // console.log('User:', user);
+      // console.log('Account:', account);
+      // console.log('Profile:', profile);
+      // console.log('IsNewUser:', isNewUser);
+      // console.log('Trigger:', trigger);
+      // console.log('----------------------------------------------------------------------------');
 
       if (user) {
         token.id = user.id;
@@ -73,14 +72,14 @@ export const authOptions: AuthOptions = {
         };
       }
 
-      console.log('Token after:', token);
+      //console.log('Token after:', token);
       return token;
     },
     async session({ session, token }: { session: any, token: any }) {
-      console.log('Session callback invoked');
-      console.log('Session before:', session);
-      console.log('Token:', token);
-      console.log('----------------------------------------------------------------------------');
+      // console.log('Session callback invoked');
+      // console.log('Session before:', session);
+      // console.log('Token:', token);
+      // console.log('----------------------------------------------------------------------------');
 
       if (token.id) {
         session.user.id = token.id;
@@ -96,7 +95,7 @@ export const authOptions: AuthOptions = {
         };
       }
 
-      console.log('Session after:', session);
+      //console.log('Session after:', session);
       return session;
     },
   }

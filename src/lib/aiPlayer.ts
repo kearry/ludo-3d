@@ -1,5 +1,8 @@
 import { Player } from './gameState'
 
+const HOME_ENTRANCE = 50
+const HOME_STEPS = 6
+
 export function makeAIMove(player: Player, dice: number[]): number {
   console.log('AI Move: Starting decision process')
   console.log(`Player tokens: ${player.tokens}`)
@@ -7,8 +10,6 @@ export function makeAIMove(player: Player, dice: number[]): number {
 
   const diceSum = dice[0] + dice[1]
   const canMoveOutOfBase = dice.includes(6)
-
-  console.log(`Dice sum: ${diceSum}, Can move out of base: ${canMoveOutOfBase}`)
 
   // Prioritize moving out of base if possible
   if (canMoveOutOfBase) {
@@ -26,18 +27,18 @@ export function makeAIMove(player: Player, dice: number[]): number {
   player.tokens.forEach((position, index) => {
     if (position === -1) return // Skip tokens in base if we can't move them out
 
-    let newPosition = (position + diceSum) % 48
-    if (newPosition >= 50) {
-      newPosition = 50 + (newPosition - 50)
-      if (newPosition > 56) return // Can't move this token
+    let newPosition = position + diceSum
+    if (newPosition > HOME_ENTRANCE) {
+      newPosition = HOME_ENTRANCE + (newPosition - HOME_ENTRANCE)
+      if (newPosition > HOME_ENTRANCE + HOME_STEPS) return // Can't move this token
     }
 
     let score = 0
 
     // Prefer moves that get tokens home
-    if (newPosition === 56) {
+    if (newPosition === HOME_ENTRANCE + HOME_STEPS) {
       score += 1000
-    } else if (newPosition > 50) {
+    } else if (newPosition > HOME_ENTRANCE) {
       score += 500
     }
 
@@ -48,9 +49,6 @@ export function makeAIMove(player: Player, dice: number[]): number {
     if (player.tokens.includes(newPosition)) {
       score += 200
     }
-
-    // Avoid moves that could get kicked back (assumes we have information about other players' tokens)
-    // This would need to be implemented with actual game state information
 
     if (score > bestScore) {
       bestScore = score
