@@ -3,7 +3,7 @@ import { Player } from './gameState'
 const HOME_ENTRANCE = 50
 const HOME_STEPS = 6
 
-export function makeAIMove(player: Player, dice: number[]): number {
+export function makeAIMove(player: Player, dice: number[], otherPlayers: Player[]): number {
   console.log('AI Move: Starting decision process')
   console.log(`Player tokens: ${player.tokens}`)
   console.log(`Dice roll: ${dice}`)
@@ -45,10 +45,26 @@ export function makeAIMove(player: Player, dice: number[]): number {
     // Prefer moves that advance tokens further
     score += newPosition
 
-    // Prefer moves that create blocks (assumes we have information about other players' tokens)
+    // Prefer moves that create blocks
     if (player.tokens.includes(newPosition)) {
       score += 200
     }
+
+    // Prefer moves that capture opponent tokens
+    otherPlayers.forEach(opponent => {
+      if (opponent.tokens.includes(newPosition)) {
+        score += 300
+      }
+    })
+
+    // Avoid moves that put tokens in danger
+    otherPlayers.forEach(opponent => {
+      opponent.tokens.forEach(opponentToken => {
+        if (opponentToken >= 0 && opponentToken < newPosition && opponentToken + 6 >= newPosition) {
+          score -= 100
+        }
+      })
+    })
 
     if (score > bestScore) {
       bestScore = score

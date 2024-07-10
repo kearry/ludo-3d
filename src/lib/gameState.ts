@@ -50,7 +50,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         },
         body: JSON.stringify({ userEmail }),
       })
-      if (!response.ok) throw new Error('Failed to create game')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to create game')
+      }
       const game = await response.json()
       set({
         gameId: game.id,
@@ -64,7 +67,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       })
     } catch (error) {
       console.error('Error creating game:', error)
-      throw error
+      set({ error: error instanceof Error ? error.message : 'An unknown error occurred' })
     }
   },
 
