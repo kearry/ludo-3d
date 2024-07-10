@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '@/lib/gameState'
+import { PlayerColor } from '@/lib/gameTypes'
 
 const BOARD_SIZE = 10
 const TRACK_WIDTH = 1.5
@@ -98,9 +99,11 @@ function CornerSquares() {
   )
 }
 
-function Token({ color, position }: { color: string; position: [number, number, number] }) {
+import { PlayerColor } from '@/lib/gameTypes'
+
+function Token({ color, position }: { color: PlayerColor; position: [number, number, number] }) {
   const tokenGeometry = new THREE.SphereGeometry(0.3, 32, 32)
-  const tokenMaterial = new THREE.MeshStandardMaterial({ color })
+  const tokenMaterial = new THREE.MeshStandardMaterial({ color: COLORS[color] })
 
   return (
     <mesh geometry={tokenGeometry} material={tokenMaterial} position={position} />
