@@ -5,7 +5,7 @@ import { authOptions } from './auth/[...nextauth]';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     const session = await getServerSession(req, res, authOptions);
-    console.log('Final session:', session);
+    //console.log('Final session:', session);
 
     if (!session) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -48,7 +48,7 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, session: an
             },
         });
 
-        console.log('Game created:', game);
+        //console.log('Game created:', game);
         res.status(201).json(game);
     } catch (error) {
         console.error('Error creating game:', error);
@@ -86,7 +86,7 @@ async function handlePut(req: NextApiRequest, res: NextApiResponse, session: any
                     updateMany: players.map((player: any) => ({
                         where: { id: player.id },
                         data: {
-                            tokens: player.tokens.join(','), // Join the tokens array here
+                            tokens: typeof player.tokens == "string" ? player.tokens : player.tokens.join(','), // Join the tokens array here
                         },
                     })),
                 },

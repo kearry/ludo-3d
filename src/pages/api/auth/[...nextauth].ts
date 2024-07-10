@@ -1,14 +1,15 @@
 //src/pages/api/auth/[...nextauth].ts
-import NextAuth, { AuthOptions } from "next-auth";
+import NextAuth, { AuthOptions, getServerSession } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import GithubProvider from "next-auth/providers/github";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import prisma from "@/lib/prisma";
+import { GetServerSidePropsContext, NextApiRequest, NextApiResponse } from "next";
 
 
 
-export const authOptions: AuthOptions = {
+export const authOptions: AuthOptions= {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -100,5 +101,13 @@ export const authOptions: AuthOptions = {
     },
   }
 };
+export function auth(
+  ...args:
+    | [GetServerSidePropsContext["req"], GetServerSidePropsContext["res"]]
+    | [NextApiRequest, NextApiResponse]
+    | []
+) {
+  return getServerSession(...args, authOptions)
+}
 
 export default NextAuth(authOptions);

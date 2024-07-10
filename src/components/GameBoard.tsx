@@ -1,22 +1,20 @@
-import React, { useRef } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import React from 'react'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '@/lib/gameState'
-import { PlayerColor } from '@/lib/gameTypes'
 
 const BOARD_SIZE = 10
 const TRACK_WIDTH = 1.5
 const CORNER_SIZE = 2
 const COLORS = {
-  red: '#FF0000',
-  green: '#00FF00',
-  yellow: '#FFFF00',
-  blue: '#0000FF',
+  RED: '#FF0000',
+  GREEN: '#00FF00',
+  YELLOW: '#FFFF00',
+  BLUE: '#0000FF',
   LIGHT_GREY: '#A0A0A0',
   DARK_GREY: '#404040',
-  BLACK: '#000000',
-  WHITE: '#FFFFFF'
+  BLACK: '#000000'
 }
 
 function Board() {
@@ -26,7 +24,6 @@ function Board() {
       <TrackSegments />
       <CornerSquares />
       <Tokens />
-      <Dice />
     </group>
   )
 }
@@ -78,10 +75,10 @@ function TrackSegments() {
 function CornerSquares() {
   const cornerGeometry = new THREE.BoxGeometry(CORNER_SIZE, 0.3, CORNER_SIZE)
   const cornerMaterials = [
-    new THREE.MeshStandardMaterial({ color: COLORS.red }),
-    new THREE.MeshStandardMaterial({ color: COLORS.green }),
-    new THREE.MeshStandardMaterial({ color: COLORS.yellow }),
-    new THREE.MeshStandardMaterial({ color: COLORS.blue })
+    new THREE.MeshStandardMaterial({ color: COLORS.RED }),
+    new THREE.MeshStandardMaterial({ color: COLORS.GREEN }),
+    new THREE.MeshStandardMaterial({ color: COLORS.YELLOW }),
+    new THREE.MeshStandardMaterial({ color: COLORS.BLUE })
   ]
 
   const createCornerSquare = (x: number, z: number, index: number) => (
@@ -99,11 +96,9 @@ function CornerSquares() {
   )
 }
 
-import { PlayerColor } from '@/lib/gameTypes'
-
-function Token({ color, position }: { color: PlayerColor; position: [number, number, number] }) {
+function Token({ color, position }: { color: string; position: [number, number, number] }) {
   const tokenGeometry = new THREE.SphereGeometry(0.3, 32, 32)
-  const tokenMaterial = new THREE.MeshStandardMaterial({ color: COLORS[color] })
+  const tokenMaterial = new THREE.MeshStandardMaterial({ color })
 
   return (
     <mesh geometry={tokenGeometry} material={tokenMaterial} position={position} />
@@ -113,31 +108,27 @@ function Token({ color, position }: { color: PlayerColor; position: [number, num
 function Tokens() {
   const players = useGameStore(state => state.players)
 
-  const getTokenPosition = (playerIndex: number, tokenIndex: number): [number, number, number] => {
-    const player = players[playerIndex]
-    const tokenPosition = player.tokens[tokenIndex]
-    
+  const getTokenPosition = (playerIndex: number, tokenPosition: number): [number, number, number] => {
     if (tokenPosition === -1) {
       // Token is in base
-      const basePositions: [number, number, number][] = [
+      const basePositions = [
         [-3.5, 0.2, -3.5], [-2.5, 0.2, -3.5], [-3.5, 0.2, -2.5], [-2.5, 0.2, -2.5], // Red base
         [2.5, 0.2, -3.5], [3.5, 0.2, -3.5], [2.5, 0.2, -2.5], [3.5, 0.2, -2.5],    // Green base
         [2.5, 0.2, 2.5], [3.5, 0.2, 2.5], [2.5, 0.2, 3.5], [3.5, 0.2, 3.5],        // Yellow base
         [-3.5, 0.2, 2.5], [-2.5, 0.2, 2.5], [-3.5, 0.2, 3.5], [-2.5, 0.2, 3.5]     // Blue base
       ]
-      return basePositions[playerIndex * 4 + tokenIndex]
+      return basePositions[playerIndex * 4 + tokenPosition]
     }
 
     // Token is on the board
-    const trackPositions: [number, number][] = [
+    const trackPositions = [
       [-3, -4.25], [-1.5, -4.25], [0, -4.25], [1.5, -4.25], [3, -4.25],
       [4.25, -3], [4.25, -1.5], [4.25, 0], [4.25, 1.5], [4.25, 3],
       [3, 4.25], [1.5, 4.25], [0, 4.25], [-1.5, 4.25], [-3, 4.25],
       [-4.25, 3], [-4.25, 1.5], [-4.25, 0], [-4.25, -1.5], [-4.25, -3]
     ]
-    const adjustedPosition = (tokenPosition - player.startPosition + trackPositions.length) % trackPositions.length
-    const [x, z] = trackPositions[adjustedPosition]
-    return [x, 0.2, z]
+    const adjustedPosition = (tokenPosition - players[playerIndex].startPosition + 48) % 48
+    return [trackPositions[adjustedPosition][0], 0.2, trackPositions[adjustedPosition][1]]
   }
 
   return (
@@ -147,33 +138,10 @@ function Tokens() {
           <Token
             key={`${playerIndex}-${tokenIndex}`}
             color={player.color}
-            position={getTokenPosition(playerIndex, tokenIndex)}
+            position={getTokenPosition(playerIndex, tokenPosition)}
           />
         ))
       )}
-    </group>
-  )
-}
-function Dice() {
-  const dice = useGameStore(state => state.dice)
-  const diceRef = useRef<THREE.Group>(null)
-
-  useFrame(() => {
-    if (diceRef.current) {
-      diceRef.current.rotation.x += 0.01
-      diceRef.current.rotation.y += 0.01
-    }
-  })
-
-  return (
-    <group ref={diceRef} position={[0, 2, 0]}>
-      <mesh>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color={COLORS.WHITE} />
-      </mesh>
-      <Text position={[0, 0, 0.51]} fontSize={0.5} color={COLORS.BLACK}>
-        {dice}
-      </Text>
     </group>
   )
 }
