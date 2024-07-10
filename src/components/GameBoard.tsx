@@ -8,10 +8,10 @@ const BOARD_SIZE = 10
 const TRACK_WIDTH = 1.5
 const CORNER_SIZE = 2
 const COLORS = {
-  RED: '#FF0000',
-  GREEN: '#00FF00',
-  YELLOW: '#FFFF00',
-  BLUE: '#0000FF',
+  red: '#FF0000',
+  green: '#00FF00',
+  yellow: '#FFFF00',
+  blue: '#0000FF',
   LIGHT_GREY: '#A0A0A0',
   DARK_GREY: '#404040',
   BLACK: '#000000',
@@ -77,10 +77,10 @@ function TrackSegments() {
 function CornerSquares() {
   const cornerGeometry = new THREE.BoxGeometry(CORNER_SIZE, 0.3, CORNER_SIZE)
   const cornerMaterials = [
-    new THREE.MeshStandardMaterial({ color: COLORS.RED }),
-    new THREE.MeshStandardMaterial({ color: COLORS.GREEN }),
-    new THREE.MeshStandardMaterial({ color: COLORS.YELLOW }),
-    new THREE.MeshStandardMaterial({ color: COLORS.BLUE })
+    new THREE.MeshStandardMaterial({ color: COLORS.red }),
+    new THREE.MeshStandardMaterial({ color: COLORS.green }),
+    new THREE.MeshStandardMaterial({ color: COLORS.yellow }),
+    new THREE.MeshStandardMaterial({ color: COLORS.blue })
   ]
 
   const createCornerSquare = (x: number, z: number, index: number) => (
