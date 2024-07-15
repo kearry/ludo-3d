@@ -1,20 +1,13 @@
-// src/components/Token.tsx
-'use client';
-
 import React from 'react';
+import { TokenModelProps } from './types';
 
-interface TokenProps {
-  position: [number, number, number];
-  color: string;
-}
-
-const Token: React.FC<TokenProps> = ({ position, color }) => {
-  return (
-    <mesh position={position}>
-      <sphereGeometry args={[0.5, 32, 32]} />
-      <meshStandardMaterial color={color} />
-    </mesh>
-  );
+const Token: React.FC<TokenModelProps> = ({ color, position, isSelected, onClick }) => {
+    return (
+        <mesh position={[position.x, position.y, position.z]} onClick={onClick}>
+            <sphereGeometry args={[0.4, 32, 32]} />
+            <meshStandardMaterial color={color} emissive={isSelected ? color : "black"} emissiveIntensity={isSelected ? 0.5 : 0} />
+        </mesh>
+    );
 };
 
 export default Token;

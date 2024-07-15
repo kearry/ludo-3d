@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { log, setLogging } from '@/lib/logger'
+import LudoBoard from '@/components/LudoBoard'
 
 export default function GamePage() {
   const { data: session, status } = useSession()
@@ -232,7 +233,7 @@ export default function GamePage() {
       </div>
       {gameStarted && (
         <div className="w-full h-[600px] mt-4">
-          <GameBoard />
+          <LudoBoard />
         </div>
       )}
     </div>
