@@ -259,7 +259,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     log('Entering checkWinCondition function')
     const state = get()
     const winner = state.players.find(player =>
-      player.tokens.every(token => token === TOTAL_STEPS)
+      player.tokens.every(token => token === TOTAL_STEPS-1)
     )
     if (winner) {
       log(`Player ${winner.color} has won the game!`)

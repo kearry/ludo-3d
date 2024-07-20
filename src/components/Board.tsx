@@ -97,6 +97,7 @@ const Board: React.FC<BoardProps> = ({ selectedTokenId, onTokenClick }) => {
             if (token < 0) {
                 // Token is in base (position of -1)
                 tokenCoords = quadrants[playerIndex].base[tokenIndex];
+                console.log("TS:",TOTAL_STEPS)
             } else if (token >= 0 && token <= zero_indexed_track) {
                 // Token is on the track (position of 0-46)
                 console.log("Token is on the track", token);
