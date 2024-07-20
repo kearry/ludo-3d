@@ -4,7 +4,21 @@ import { BoardProps } from './types';
 import Square from './Square';
 import Polygon from './Polygon';
 import Token from './Token';
-import { playerColors, startPositions, homeCoords, trackCoords, quadrants, GRID_SIZE } from './constants';
+import { TRACK_STEPS, HOME_STEPS, TOTAL_STEPS } from '../lib/constants';
+import {
+    playerColors,
+    startPositions,
+    homeCoords,
+    homePathCoords,
+    homeDestCoords,
+    finalStepCoords,
+    baseCoords,
+    trackCoords,
+    quadrants,
+    GRID_SIZE,
+    BOARD_DEPTH
+} from '../lib/constants';
+import { useGameStore } from '@/lib/gameState';
 
 const Board: React.FC<BoardProps> = ({ selectedTokenId, onTokenClick }) => {
     const { viewport } = useThree();
@@ -47,45 +61,102 @@ const Board: React.FC<BoardProps> = ({ selectedTokenId, onTokenClick }) => {
                     break;
                 }
             }
-            squares.push(
-                <Square
-                    key={`${x}-${y}`}
-                    position={[x - GRID_SIZE / 2, y - GRID_SIZE / 2, 0]}  // Set z to 0
-                    border={isTrackSquare}
-                    color={color}
-                    borderColor="black"
-                />
-            );
+            if (isTrackSquare ) {
+                squares.push(
+                    <Square
+                        key={`${x}-${y}`}
+                        position={[x - GRID_SIZE / 2, y - GRID_SIZE / 2, 0.375]}
+                        border={isTrackSquare}
+                        color={color}
+                        borderColor="black"
+                    />
+                );
+            }
         }
     }
 
-    const playerTokens = Object.entries(playerColors).flatMap(([color, colorValue], playerIndex) =>
-        Array(4).fill(null).map((_, tokenIndex) => (
-            <Token
-                key={`${color}-${tokenIndex}`}
-                id={playerIndex * 4 + tokenIndex}
-                color={colorValue}
-                position={{
-                    x: quadrants[playerIndex].base[tokenIndex].x - GRID_SIZE / 2,
-                    y: quadrants[playerIndex].base[tokenIndex].y - GRID_SIZE / 2,
-                    z: 0.8  // Keep this value to raise tokens above the board surface
-                }}
-                isSelected={selectedTokenId === playerIndex * 4 + tokenIndex}
-                onClick={() => onTokenClick(playerIndex * 4 + tokenIndex)}
-            />
-        ))
-    );
+    const gs = useGameStore();
+    const tokenTrackOffset = () => {
+       switch (gs.players[gs.currentPlayer].color) {
+            case 'green':
+                return startPositions.green.trackOffset;
+            case 'yellow':
+                return startPositions.yellow.trackOffset;
+            case 'red':
+                return startPositions.red.trackOffset;
+            case 'black':
+                return startPositions.black.trackOffset;
+            default:
+                return 0;
+        } 
+    } 
+    const zero_indexed_track = TOTAL_STEPS - HOME_STEPS - 1;
+    const playerTokens = Object.entries(playerColors).flatMap(([color, colorValue], playerIndex) => {
+        return gs.players[playerIndex].tokens.map((token, tokenIndex) => {
+            let tokenCoords;
+            if (token < 0) {
+                // Token is in base (position of -1)
+                tokenCoords = quadrants[playerIndex].base[tokenIndex];
+            } else if (token >= 0 && token <= zero_indexed_track) {
+                // Token is on the track (position of 0-46)
+                console.log("Token is on the track", token);
+                tokenCoords = trackCoords[(token + tokenTrackOffset())%48];
+            } else if ((token > zero_indexed_track) && token != (TOTAL_STEPS-1)) {
+                // Token is on the final steps (position of 47-51)
+                tokenCoords = homePathCoords[gs.players[playerIndex].color][token - zero_indexed_track-1];
+                console.log("Token is on the final steps", tokenCoords);
+            } 
+            else if (token == (TOTAL_STEPS-1)) {
+                // Token is on the home (position of 52?)
+                tokenCoords = homeDestCoords[gs.players[playerIndex].color][tokenIndex];
+            }
+            else {
+                console.error(`Invalid token index: ${token}`);
+                return null;
+            }
+
+            return (
+                <Token
+                    key={`${color}-${tokenIndex}`}
+                    id={playerIndex * 4 + tokenIndex}
+                    color={colorValue}
+                    position={{
+                        x: tokenCoords.x - GRID_SIZE / 2,
+                        y: tokenCoords.y - GRID_SIZE / 2,
+                        z: BOARD_DEPTH
+                    }}
+                    isSelected={selectedTokenId === playerIndex * 4 + tokenIndex}
+                    onClick={() => onTokenClick(playerIndex * 4 + tokenIndex)}
+                />
+            );
+        });
+    }).filter(Boolean); // Filter out null values
 
     return (
-        <group rotation={[0, 0, Math.PI]}>
-            <group rotation-x={Math.PI * 1.5}>
-                {squares}
-                <Polygon color={playerColors.green} coords={homeCoords.green} />
-                <Polygon color={playerColors.yellow} coords={homeCoords.yellow} />
-                <Polygon color={playerColors.red} coords={homeCoords.red} />
-                <Polygon color={playerColors.black} coords={homeCoords.black} />
-                {playerTokens}
-            </group>
+        <group scale={officeScaleRatio}>
+            <mesh position={[-0.5, -0.5, 0]}>
+                <boxGeometry args={[GRID_SIZE + 0.5, GRID_SIZE + 0.5, 0.5]} />
+                <meshStandardMaterial color="gray" />
+            </mesh>
+            {squares}
+
+            <Polygon color="white" coords={finalStepCoords.green} border={true} borderColor="black" />
+            <Polygon color="white" coords={finalStepCoords.yellow} border={true} borderColor="black" />
+            <Polygon color="white" coords={finalStepCoords.red} border={true} borderColor="black" />
+            <Polygon color="white" coords={finalStepCoords.black} border={true} borderColor="black" />
+
+            <Polygon color={playerColors.green} coords={homeCoords.green} border={null} borderColor={null} />
+            <Polygon color={playerColors.green} coords={baseCoords.green} border={null} borderColor={null} />
+
+            <Polygon color={playerColors.yellow} coords={homeCoords.yellow} border={null} borderColor={null} />
+            <Polygon color={playerColors.yellow} coords={baseCoords.yellow} border={null} borderColor={null} />
+
+            <Polygon color={playerColors.red} coords={homeCoords.red} border={null} borderColor={null} />
+            <Polygon color={playerColors.red} coords={baseCoords.red} border={null} borderColor={null} />
+
+            <Polygon color={playerColors.black} coords={homeCoords.black} border={null} borderColor={null} />
+            <Polygon color={playerColors.black} coords={baseCoords.black} border={null} borderColor={null} />
+            {playerTokens}
         </group>
     );
 };

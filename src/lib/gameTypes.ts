@@ -1,5 +1,5 @@
 // lib/gameTypes.ts
-export type PlayerColor = 'red' | 'green' | 'yellow' | 'blue';
+export type PlayerColor = 'red' | 'green' | 'yellow' | 'black';
 
 export interface Player {
   id: string;

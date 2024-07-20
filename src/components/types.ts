@@ -29,4 +29,12 @@ export interface TokenModelProps {
 export interface PolygonProps {
     color: string;
     coords: Coord[];
+    border: boolean | null;
+    borderColor: string | null;
+}
+
+export interface HomePathProps {
+    color: string;
+    startPosition: [number, number, number];
+    rotation?: number;
 }

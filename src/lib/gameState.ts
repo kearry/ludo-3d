@@ -1,40 +1,17 @@
 import { create } from 'zustand'
 import { makeAIMove } from './aiPlayer'
 import { log } from './logger'
+import { GameState } from './gameTypes'
+import { TRACK_STEPS, HOME_STEPS, TOTAL_STEPS } from './constants'
 
 export type Player = {
   id: string
   userId: string
-  color: 'red' | 'green' | 'yellow' | 'blue'
+  color: 'red' | 'green' | 'yellow' | 'black'
   tokens: number[]
   isAI: boolean
   startPosition: number
 }
-
-type GameState = {
-  gameId: string | null
-  players: Player[]
-  currentPlayer: number
-  dice: number[]
-  selectedDie: number | null
-  winner: string | null
-  createGame: (userId: string) => Promise<void>
-  loadGame: (gameId: string) => Promise<void>
-  rollDice: () => Promise<void>
-  selectDie: (dieIndex: number) => void
-  moveToken: (playerId: string, tokenIndex: number) => Promise<boolean>
-  canMoveToken: (playerId: string, tokenIndex: number) => boolean
-  hasValidMove: () => boolean
-  playAITurn: () => Promise<void>
-  checkWinCondition: () => void
-  updateGameState: () => Promise<void>
-  endTurn: () => Promise<void>
-}
-
-const BOARD_SIZE = 48
-const HOME_ENTRANCE = 50
-const HOME_STEPS = 6
-const TOTAL_STEPS = HOME_ENTRANCE + HOME_STEPS
 
 export const useGameStore = create<GameState>((set, get) => ({
   gameId: null,
@@ -128,25 +105,23 @@ export const useGameStore = create<GameState>((set, get) => ({
       return true
     }
 
-    if (tokenPosition >= TOTAL_STEPS) {
+    if (tokenPosition >= TOTAL_STEPS - 1) {
       log('Token already at final position')
       return false
     }
 
     if (tokenPosition >= 0) {
+      // Token is not at base
       let newPosition = tokenPosition + diceValue
-      if (tokenPosition < HOME_ENTRANCE && newPosition >= HOME_ENTRANCE) {
-        newPosition = HOME_ENTRANCE + (newPosition - HOME_ENTRANCE)
-      }
 
-      if (newPosition > TOTAL_STEPS) {
+      if (newPosition > TOTAL_STEPS - 1) {
         log('Move would exceed final position')
         return false
       }
 
-      const isBlocked = state.players.some(p => 
-        p.id !== playerId && 
-        p.tokens.filter(t => t === newPosition && t < HOME_ENTRANCE).length >= 2
+      const isBlocked = state.players.some(p =>
+        p.id !== playerId &&
+        p.tokens.filter(t => t === newPosition && t < TRACK_STEPS).length >= 2
       )
 
       if (isBlocked) {
@@ -169,7 +144,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       log('No die selected. Cannot move token.')
       return false
     }
-    
+
     const playerIndex = state.players.findIndex(p => p.userId === playerId)
     if (playerIndex === -1) {
       log(`Player with userId ${playerId} not found`)
@@ -186,29 +161,26 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (currentPosition === -1 && diceValue === 6) {
       currentPosition = player.startPosition
       log(`Token moved out of base to position ${currentPosition}`)
-    } else if (currentPosition >= 0) {
-      currentPosition += diceValue
-      if (currentPosition >= HOME_ENTRANCE && currentPosition < TOTAL_STEPS) {
-        currentPosition = HOME_ENTRANCE + ((currentPosition - HOME_ENTRANCE) % HOME_STEPS)
-        log(`Token moved in home stretch to position ${currentPosition}`)
-      } else if (currentPosition >= TOTAL_STEPS) {
-        log(`Invalid move: would move beyond last home space`)
-        return false
-      } else {
-        currentPosition %= BOARD_SIZE
-        log(`Token moved on main track to position ${currentPosition}`)
-      }
-    } else {
-      log(`Invalid move: token in base and dice value is not 6`)
-      return false
     }
+    else
+      if (currentPosition >= 0) {
+        currentPosition += diceValue
+        if (currentPosition >= TRACK_STEPS - 1 && currentPosition <= TOTAL_STEPS - 1) {
+          log(`Token moved in home stretch to position ${currentPosition}`)
+        }
+        else
+          if (currentPosition > TOTAL_STEPS - 1) {
+            log(`Invalid move: would move beyond last home space`)
+            return false
+          }
+      }
 
     newPlayers[playerIndex].tokens[tokenIndex] = currentPosition
 
-    newPlayers.forEach((otherPlayer, idx) => {
+    newPlayers.forEach((otherPlayer: Player, idx: number) => {
       if (idx !== playerIndex) {
         const tokenCount = otherPlayer.tokens.filter(t => t === currentPosition).length
-        if (tokenCount === 1 && currentPosition < HOME_ENTRANCE) {
+        if (tokenCount === 1 && currentPosition < TRACK_STEPS - 1) {
           otherPlayer.tokens = otherPlayer.tokens.map(t => t === currentPosition ? -1 : t)
           log(`Kicked out ${otherPlayer.color} token back to base`)
         }
@@ -218,7 +190,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const newDice = [...state.dice]
     newDice[state.selectedDie] = 0
 
-    set({ 
+    set({
       players: newPlayers,
       dice: newDice,
       selectedDie: null
@@ -236,14 +208,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     log('Entering hasValidMove function')
     const state = get()
     const currentPlayer = state.players[state.currentPlayer]
-    
+
     log(`Checking for valid moves for ${currentPlayer.color}`)
     log(`Dice: ${state.dice}`)
 
     return state.dice.some((dieValue, dieIndex) => {
       if (dieValue === 0) return false
       state.selectedDie = dieIndex
-      const hasMove = currentPlayer.tokens.some((_, tokenIndex) => 
+      const hasMove = currentPlayer.tokens.some((_, tokenIndex) =>
         state.canMoveToken(currentPlayer.id, tokenIndex)
       )
       log(`Die ${dieIndex} (value ${dieValue}): ${hasMove ? 'Has valid move' : 'No valid move'}`)
@@ -266,7 +238,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     for (let i = 0; i < newDice.length; i++) {
       if (newDice[i] === 0) continue
       get().selectDie(i)
-      const moveResult = makeAIMove(currentPlayer, [newDice[i]])
+      const moveResult = makeAIMove(currentPlayer, [newDice[i]], state.players.filter(p => p.id !== currentPlayer.id))
       if (moveResult !== -1) {
         log(`AI moving token: ${moveResult}`)
         await get().moveToken(currentPlayer.id, moveResult)
@@ -286,7 +258,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   checkWinCondition: () => {
     log('Entering checkWinCondition function')
     const state = get()
-    const winner = state.players.find(player => 
+    const winner = state.players.find(player =>
       player.tokens.every(token => token === TOTAL_STEPS)
     )
     if (winner) {
@@ -330,7 +302,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const state = get()
     const nextPlayer = (state.currentPlayer + 1) % state.players.length
     log(`Turn ended. Moving to next player: ${state.players[nextPlayer].color}`)
-    set({ 
+    set({
       currentPlayer: nextPlayer,
       dice: [0, 0],
       selectedDie: null

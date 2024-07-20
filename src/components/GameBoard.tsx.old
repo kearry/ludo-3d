@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '@/lib/gameState'
+import { trackCoords } from './constants'
 
 const BOARD_SIZE = 10
 const TRACK_WIDTH = 1.5
@@ -117,20 +118,16 @@ function Tokens() {
         [2.5, 0.2, 2.5], [3.5, 0.2, 2.5], [2.5, 0.2, 3.5], [3.5, 0.2, 3.5],        // Yellow base
         [-3.5, 0.2, 2.5], [-2.5, 0.2, 2.5], [-3.5, 0.2, 3.5], [-2.5, 0.2, 3.5]     // Blue base
       ]
-      return basePositions[playerIndex * 4 + tokenPosition]
+      return basePositions[playerIndex * 4 + tokenPosition] as [number, 0.2, number]
     }
 
     // Token is on the board
-    const trackPositions = [
-      [-3, -4.25], [-1.5, -4.25], [0, -4.25], [1.5, -4.25], [3, -4.25],
-      [4.25, -3], [4.25, -1.5], [4.25, 0], [4.25, 1.5], [4.25, 3],
-      [3, 4.25], [1.5, 4.25], [0, 4.25], [-1.5, 4.25], [-3, 4.25],
-      [-4.25, 3], [-4.25, 1.5], [-4.25, 0], [-4.25, -1.5], [-4.25, -3]
-    ]
+    
     const adjustedPosition = (tokenPosition - players[playerIndex].startPosition + 48) % 48
-    return [trackPositions[adjustedPosition][0], 0.2, trackPositions[adjustedPosition][1]]
+    
+    return [trackCoords[adjustedPosition].x, 0.2, trackCoords[adjustedPosition].y]
   }
-
+  console.log("Rendering tokens..")
   return (
     <group>
       {players.map((player, playerIndex) =>

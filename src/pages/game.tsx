@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/router'
-import GameBoard from '../components/GameBoard'
+//import GameBoard from '../components/GameBoard'
 import { useGameStore } from '@/lib/gameState'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +14,7 @@ export default function GamePage() {
   const router = useRouter()
   const { gameId } = router.query
   const [gameStarted, setGameStarted] = useState(false)
+  const [setCurrentPlayer] = useState<'green' | 'yellow' | 'red' | 'black'>('green');
   const [error, setError] = useState<string | null>(null)
   const {
     players,
@@ -30,6 +31,8 @@ export default function GamePage() {
     hasValidMove,
     playAITurn
   } = useGameStore()
+
+
 
   useEffect(() => {
     log('Entering first useEffect in GamePage')
@@ -148,7 +151,7 @@ export default function GamePage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="w-full max-w-4xl p-4">
+      <div className="max-w-4xl p-4">
         <Card>
           <CardHeader>
             <CardTitle>Ludo Game</CardTitle>
@@ -158,12 +161,12 @@ export default function GamePage() {
               <Button onClick={initGame}>Start New Game</Button>
             ) : (
               <>
-                <div className="mb-4">
+                <div className="h-50">
                   <p className="text-lg font-bold">
                     Current Player: <span className="text-blue-600">{players[currentPlayer]?.color}</span>
                   </p>
                   {isYourTurn ? (
-                    <p className="text-green-600 font-bold">It's your turn!</p>
+                    <p className="text-green-600 font-bold">It&apos;s your turn!</p>
                   ) : (
                     <p className="text-red-600">Waiting for {players[currentPlayer]?.color} player to make a move...</p>
                   )}
@@ -232,7 +235,7 @@ export default function GamePage() {
         </Card>
       </div>
       {gameStarted && (
-        <div className="w-full h-[600px] mt-4">
+        <div>
           <LudoBoard />
         </div>
       )}

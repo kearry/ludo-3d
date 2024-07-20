@@ -36,9 +36,9 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, session: an
                 status: 'PLAYING',
                 players: {
                     create: [
-                        { userId: session.user.id, color: 'red', tokens: '-1,-1,-1,-1', isAI: false },
-                        { color: 'blue', tokens: '-1,-1,-1,-1', isAI: true },
-                        { color: 'green', tokens: '-1,-1,-1,-1', isAI: true },
+                        { userId: session.user.id, color: 'green', tokens: '-1,-1,-1,-1', isAI: false },
+                        { color: 'black', tokens: '-1,-1,-1,-1', isAI: true },
+                        { color: 'red', tokens: '-1,-1,-1,-1', isAI: true },
                         { color: 'yellow', tokens: '-1,-1,-1,-1', isAI: true },
                     ],
                 },
