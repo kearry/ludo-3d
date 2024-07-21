@@ -26,6 +26,7 @@ export default function GamePage() {
     loadGame,
     rollDice,
     selectDie,
+    endTurn,
     moveToken,
     canMoveToken,
     hasValidMove,
@@ -72,13 +73,13 @@ export default function GamePage() {
 
   useEffect(() => {
     log('Entering AI turn useEffect in GamePage')
-    if (gameStarted && players[currentPlayer]?.isAI && dice.some(d => d !== 0)) {
+    if (gameStarted && players[currentPlayer]?.isAI) {
       const timer = setTimeout(() => {
         playAITurn()
       }, 1000)
       return () => clearTimeout(timer)
     }
-  }, [gameStarted, currentPlayer, players, dice, playAITurn])
+  }, [gameStarted, currentPlayer,dice, players, playAITurn])
 
   useEffect(() => {
     log('Entering game state update logging useEffect in GamePage')
@@ -94,6 +95,11 @@ export default function GamePage() {
     if (players[currentPlayer]?.userId === session?.user?.id) {
       await rollDice()
       log(`Dice rolled: ${useGameStore.getState().dice}`)
+      // Check if there are any valid moves after rolling
+      if (!hasValidMove()) {
+        log('No valid moves after rolling, ending turn')
+        await useGameStore.getState().endTurn()
+      }
     }
   }
 
@@ -127,12 +133,12 @@ export default function GamePage() {
     return canUse;
   }
 
-  log(`Render state: ${JSON.stringify({ 
-    gameStarted, 
-    isYourTurn, 
-    currentPlayer, 
-    dice, 
-    playerId: session?.user?.id, 
+  log(`Render state: ${JSON.stringify({
+    gameStarted,
+    isYourTurn,
+    currentPlayer,
+    dice,
+    playerId: session?.user?.id,
     currentPlayerId: players[currentPlayer]?.userId,
     players: players.map(p => ({ id: p.id, userId: p.userId, color: p.color, isAI: p.isAI }))
   })}`)
@@ -152,7 +158,7 @@ export default function GamePage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
       <div className="max-w-4xl p-4">
-        <Card>
+        <Card className="bg-white flex right-0">
           <CardHeader>
             <CardTitle>Ludo Game</CardTitle>
           </CardHeader>

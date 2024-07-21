@@ -137,6 +137,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     return false
   },
 
+
   moveToken: async (playerId: string, tokenIndex: number): Promise<boolean> => {
     log(`Entering moveToken function for player ${playerId}, token ${tokenIndex}`)
     const state = get()
@@ -201,6 +202,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     await get().updateGameState()
     get().checkWinCondition()
 
+    // Check if the turn should end
+    if (!get().hasValidMove()) {
+      log('No more valid moves, ending turn')
+      await get().endTurn()
+    }
+
     return true
   },
 
@@ -227,13 +234,19 @@ export const useGameStore = create<GameState>((set, get) => ({
     log('Entering playAITurn function')
     const state = get()
     const currentPlayer = state.players[state.currentPlayer]
-    if (!currentPlayer.isAI) return
+    if (!currentPlayer.isAI) {
+      log('Current player is not AI, skipping AI turn')
+      return
+    }
 
     log(`AI Turn: Player ${currentPlayer.color}`)
 
+    // Roll dice
     await get().rollDice()
     let newDice = [...get().dice]
     log(`AI dice roll: ${newDice}`)
+
+    let moveMade = false
 
     for (let i = 0; i < newDice.length; i++) {
       if (newDice[i] === 0) continue
@@ -242,24 +255,64 @@ export const useGameStore = create<GameState>((set, get) => ({
       if (moveResult !== -1) {
         log(`AI moving token: ${moveResult}`)
         await get().moveToken(currentPlayer.id, moveResult)
+        moveMade = true
+        // Re-fetch dice as they may have changed after moveToken
+        newDice = get().dice
       } else {
         log('AI has no valid moves for this die')
       }
-      newDice = get().dice
     }
 
-    //if (newDice.every(d => d === 0)) {
-    //  await get().endTurn()
-    //}
+    if (!moveMade) {
+      log('AI could not make any moves, ending turn')
+      await get().endTurn()
+    } else if (newDice.every(d => d === 0)) {
+      log('AI used all dice, ending turn')
+      await get().endTurn()
+    }
 
     log('AI Turn ended')
   },
 
+  endTurn: async () => {
+    log('Entering endTurn function')
+    const state = get()
+    const currentPlayer = state.players[state.currentPlayer]
+    
+    // Check if player can roll again (rolled a 6)
+    if (state.dice.includes(6) && state.dice.some(d => d !== 0)) {
+      log('Player rolled a 6, gets another turn')
+      set({ dice: [0, 0], selectedDie: null })
+      if (currentPlayer.isAI) {
+        log('AI rolled 6, playing another turn')
+        setTimeout(() => get().playAITurn(), 1000)
+      }
+      return
+    }
+    
+    // Move to the next player
+    const nextPlayer = (state.currentPlayer + 1) % state.players.length
+    log(`Turn ended. Moving to next player: ${state.players[nextPlayer].color}`)
+    
+    set({
+      currentPlayer: nextPlayer,
+      dice: [0, 0],
+      selectedDie: null
+    })
+    
+    await get().updateGameState()
+    
+    // Check if the next player is AI
+    if (state.players[nextPlayer].isAI) {
+      log('Next player is AI, initiating AI turn')
+      setTimeout(() => get().playAITurn(), 1000) // Delay AI turn for better UX
+    }
+  },
   checkWinCondition: () => {
     log('Entering checkWinCondition function')
     const state = get()
     const winner = state.players.find(player =>
-      player.tokens.every(token => token === TOTAL_STEPS-1)
+      player.tokens.every(token => token === TOTAL_STEPS - 1)
     )
     if (winner) {
       log(`Player ${winner.color} has won the game!`)
@@ -295,18 +348,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     } catch (error) {
       log(`Error updating game state: ${error}`)
     }
-  },
-
-  endTurn: async () => {
-    log('Entering endTurn function')
-    const state = get()
-    const nextPlayer = (state.currentPlayer + 1) % state.players.length
-    log(`Turn ended. Moving to next player: ${state.players[nextPlayer].color}`)
-    set({
-      currentPlayer: nextPlayer,
-      dice: [0, 0],
-      selectedDie: null
-    })
-    await get().updateGameState()
   }
+
 }))
