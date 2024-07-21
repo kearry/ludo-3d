@@ -1,83 +1,64 @@
 import { Player } from './gameState'
-
-const HOME_ENTRANCE = 50
-const HOME_STEPS = 6
+import { TRACK_STEPS, HOME_STEPS, TOTAL_STEPS } from './constants'
 
 export function makeAIMove(player: Player, dice: number[], otherPlayers: Player[]): number {
-  console.log('AI Move: Starting decision process')
-  console.log(`Player tokens: ${player.tokens}`)
-  console.log(`Dice roll: ${dice}`)
+  const diceSum = dice[0] + dice[1];
+  const canMoveOutOfBase = dice.includes(6);
+  const HOME_ENTRANCE = TRACK_STEPS - 1;
 
-  const diceSum = dice[0] + dice[1]
-  const canMoveOutOfBase = dice.includes(6)
-
-  // Prioritize moving out of base if possible
+  // --- Priority: Move out of Base if Possible ---
   if (canMoveOutOfBase) {
-    const baseTokenIndex = player.tokens.findIndex(token => token === -1)
-    if (baseTokenIndex !== -1) {
-      console.log(`AI Move: Decided to move token out of base at index ${baseTokenIndex}`)
-      return baseTokenIndex
-    }
+    const baseTokenIndex = player.tokens.findIndex(token => token === -1);
+    if (baseTokenIndex !== -1) return baseTokenIndex; // Immediately return if possible
   }
 
-  // If can't move out of base or all tokens are out, use a scoring system to decide the best move
-  let bestScore = -Infinity
-  let bestMoveIndex = -1
+  // --- Scoring-Based Decision Logic ---
 
-  player.tokens.forEach((position, index) => {
-    if (position === -1) return // Skip tokens in base if we can't move them out
+  let bestMoveIndex = -1;
+  let bestMoveScore = -Infinity;
 
-    let newPosition = position + diceSum
-    if (newPosition > HOME_ENTRANCE) {
-      newPosition = HOME_ENTRANCE + (newPosition - HOME_ENTRANCE)
-      if (newPosition > HOME_ENTRANCE + HOME_STEPS) return // Can't move this token
+  for (let i = 0; i < player.tokens.length; i++) { // More efficient loop
+    const currentPos = player.tokens[i];
+
+    if (currentPos === -1) continue; // Skip base tokens if can't move out
+
+    const newPos = (currentPos + diceSum) % TOTAL_STEPS; // Handle loop around the track
+    const isHomeStretch = newPos > HOME_ENTRANCE;
+
+    // Check if move is valid (within home stretch limits)
+    if (isHomeStretch && newPos > HOME_ENTRANCE + HOME_STEPS) continue;
+
+    let moveScore = 0;
+
+    // --- Scoring Factors ---
+
+    // Prioritize reaching home
+    if (newPos === HOME_ENTRANCE + HOME_STEPS) moveScore += 1000;
+    else if (isHomeStretch) moveScore += 500;
+
+    moveScore += newPos; // Favor moving forward
+    moveScore += player.tokens.includes(newPos) ? 200 : 0; // Forming blocks
+
+    // Capture opponent tokens
+    for (const opponent of otherPlayers) {
+      if (opponent.tokens.includes(newPos)) moveScore += 300; 
     }
 
-    let score = 0
-
-    // Prefer moves that get tokens home
-    if (newPosition === HOME_ENTRANCE + HOME_STEPS) {
-      score += 1000
-    } else if (newPosition > HOME_ENTRANCE) {
-      score += 500
-    }
-
-    // Prefer moves that advance tokens further
-    score += newPosition
-
-    // Prefer moves that create blocks
-    if (player.tokens.includes(newPosition)) {
-      score += 200
-    }
-
-    // Prefer moves that capture opponent tokens
-    otherPlayers.forEach(opponent => {
-      if (opponent.tokens.includes(newPosition)) {
-        score += 300
-      }
-    })
-
-    // Avoid moves that put tokens in danger
-    otherPlayers.forEach(opponent => {
-      opponent.tokens.forEach(opponentToken => {
-        if (opponentToken >= 0 && opponentToken < newPosition && opponentToken + 6 >= newPosition) {
-          score -= 100
+    // Avoid immediate danger
+    for (const opponent of otherPlayers) {
+      for (const opponentToken of opponent.tokens) {
+        if (opponentToken >= 0 && opponentToken < newPos && opponentToken + 6 >= newPos) {
+          moveScore -= 100;
         }
-      })
-    })
-
-    if (score > bestScore) {
-      bestScore = score
-      bestMoveIndex = index
+      }
     }
-  })
 
-  if (bestMoveIndex !== -1) {
-    console.log(`AI Move: Decided to move token at index ${bestMoveIndex}`)
-    return bestMoveIndex
+    // --- Update Best Move ---
+    if (moveScore > bestMoveScore) {
+      bestMoveIndex = i;
+      bestMoveScore = moveScore;
+    }
   }
 
-  // If no valid move found, return -1
-  console.log(`AI Move: No valid move found`)
-  return -1
+  return bestMoveIndex; // Return the index of the token to move (-1 if no valid move)
 }

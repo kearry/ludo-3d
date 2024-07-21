@@ -248,9 +248,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       newDice = get().dice
     }
 
-    if (newDice.every(d => d === 0)) {
-      await get().endTurn()
-    }
+    //if (newDice.every(d => d === 0)) {
+    //  await get().endTurn()
+    //}
 
     log('AI Turn ended')
   },
