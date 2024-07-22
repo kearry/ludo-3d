@@ -37,19 +37,23 @@ export const useGameStore = create<GameState>((set, get) => ({
       set({
         gameId: game.id,
         players: game.players.map((p: any, index: number) => ({
-          ...p,
+          id: p.id,
+          userId: p.userId || null,
+          color: p.color,
           tokens: p.tokens.split(',').map(Number),
           startPosition: index * 12,
+          isAI: !p.userId, // Set isAI to true if userId is null or undefined
         })),
         currentPlayer: game.currentPlayer,
         dice: game.dice.split(',').map(Number),
       })
+      log(`Game state after creation: ${JSON.stringify(get(), null, 2)}`)
     } catch (error) {
       log(`Error creating game: ${error}`)
       throw error
     }
   },
-
+  
   loadGame: async (gameId: string) => {
     log('Entering loadGame function')
     try {
@@ -146,13 +150,15 @@ export const useGameStore = create<GameState>((set, get) => ({
       return false
     }
 
-    const playerIndex = state.players.findIndex(p => p.userId === playerId)
-    if (playerIndex === -1) {
-      log(`Player with userId ${playerId} not found`)
+    const player = state.players.find(p => p.id === playerId)
+    if (!player) {
+      log(`Player with id ${playerId} not found. Available players:`)
+      state.players.forEach(p => log(`Player ID: ${p.id}, Color: ${p.color}`))
       return false
     }
 
-    const player = state.players[playerIndex]
+    log(`Moving token for player: ${player.color}`)
+
     let newPlayers = JSON.parse(JSON.stringify(state.players))
     let currentPosition = player.tokens[tokenIndex]
     const diceValue = state.dice[state.selectedDie]
@@ -162,24 +168,22 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (currentPosition === -1 && diceValue === 6) {
       currentPosition = player.startPosition
       log(`Token moved out of base to position ${currentPosition}`)
-    }
-    else
-      if (currentPosition >= 0) {
-        currentPosition += diceValue
-        if (currentPosition >= TRACK_STEPS - 1 && currentPosition <= TOTAL_STEPS - 1) {
-          log(`Token moved in home stretch to position ${currentPosition}`)
-        }
-        else
-          if (currentPosition > TOTAL_STEPS - 1) {
-            log(`Invalid move: would move beyond last home space`)
-            return false
-          }
+    } else if (currentPosition >= 0) {
+      currentPosition += diceValue
+      if (currentPosition >= TRACK_STEPS - 1 && currentPosition <= TOTAL_STEPS - 1) {
+        log(`Token moved in home stretch to position ${currentPosition}`)
+      } else if (currentPosition > TOTAL_STEPS - 1) {
+        log(`Invalid move: would move beyond last home space`)
+        return false
       }
+    }
 
-    newPlayers[playerIndex].tokens[tokenIndex] = currentPosition
+    // Update the player's token in newPlayers
+    const updatedPlayerIndex = newPlayers.findIndex(p => p.id === playerId)
+    newPlayers[updatedPlayerIndex].tokens[tokenIndex] = currentPosition
 
     newPlayers.forEach((otherPlayer: Player, idx: number) => {
-      if (idx !== playerIndex) {
+      if (otherPlayer.id !== playerId) {
         const tokenCount = otherPlayer.tokens.filter(t => t === currentPosition).length
         if (tokenCount === 1 && currentPosition < TRACK_STEPS - 1) {
           otherPlayer.tokens = otherPlayer.tokens.map(t => t === currentPosition ? -1 : t)
@@ -202,7 +206,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     await get().updateGameState()
     get().checkWinCondition()
 
-    // Check if the turn should end
     if (!get().hasValidMove()) {
       log('No more valid moves, ending turn')
       await get().endTurn()
@@ -210,6 +213,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
     return true
   },
+
 
   hasValidMove: () => {
     log('Entering hasValidMove function')
@@ -244,7 +248,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     // Roll dice
     await get().rollDice()
     let newDice = [...get().dice]
-    log(`AI dice roll: ${newDice}`)
+    log(`AI dice roll: ${newDice.join(', ')}`)
 
     let moveMade = false
 
@@ -253,11 +257,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       get().selectDie(i)
       const moveResult = makeAIMove(currentPlayer, [newDice[i]], state.players.filter(p => p.id !== currentPlayer.id))
       if (moveResult !== -1) {
-        log(`AI moving token: ${moveResult}`)
-        await get().moveToken(currentPlayer.id, moveResult)
-        moveMade = true
-        // Re-fetch dice as they may have changed after moveToken
-        newDice = get().dice
+        log(`AI attempting to move token: ${moveResult}`)
+        const moveSuccessful = await get().moveToken(currentPlayer.id, moveResult)
+        if (moveSuccessful) {
+          log(`AI successfully moved token: ${moveResult}`)
+          moveMade = true
+          // Re-fetch dice as they may have changed after moveToken
+          newDice = get().dice
+        } else {
+          log(`AI failed to move token: ${moveResult}`)
+        }
       } else {
         log('AI has no valid moves for this die')
       }
@@ -274,10 +283,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     log('AI Turn ended')
   },
 
+
+
   endTurn: async () => {
     log('Entering endTurn function')
     const state = get()
     const currentPlayer = state.players[state.currentPlayer]
+    
+    log(`Current player: ${currentPlayer.color}, isAI: ${currentPlayer.isAI}`)
+    log(`Current dice: ${state.dice.join(', ')}`)
     
     // Check if player can roll again (rolled a 6)
     if (state.dice.includes(6) && state.dice.some(d => d !== 0)) {
@@ -308,6 +322,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       setTimeout(() => get().playAITurn(), 1000) // Delay AI turn for better UX
     }
   },
+
   checkWinCondition: () => {
     log('Entering checkWinCondition function')
     const state = get()

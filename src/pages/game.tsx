@@ -113,7 +113,7 @@ export default function GamePage() {
   const handleMoveToken = async (tokenIndex: number) => {
     log(`Entering handleMoveToken function for token ${tokenIndex}`)
     if (players[currentPlayer]?.userId === session?.user?.id && selectedDie !== null) {
-      const moveMade = await moveToken(session.user.id, tokenIndex)
+      const moveMade = await moveToken(players[currentPlayer].id, tokenIndex)
       if (moveMade) {
         log("Token moved successfully")
       } else {

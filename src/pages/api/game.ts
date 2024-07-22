@@ -4,10 +4,12 @@ import prisma from '@/lib/prisma';
 import { authOptions } from './auth/[...nextauth]';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    console.log('Received request:', req.method, req.url);
     const session = await getServerSession(req, res, authOptions);
-    //console.log('Final session:', session);
+    console.log('Session:', session);
 
     if (!session) {
+        console.log('Unauthorized request');
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -20,11 +22,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             case 'PUT':
                 return await handlePut(req, res, session);
             default:
+                console.log('Method not allowed:', req.method);
                 return res.status(405).json({ error: 'Method not allowed' });
         }
     } catch (error) {
         console.error('API error:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 }
 
@@ -34,6 +37,8 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, session: an
         const game = await prisma.game.create({
             data: {
                 status: 'PLAYING',
+                currentPlayer: 0, // Add this line to set initial current player
+                dice: '0,0', // Add this line to set initial dice values
                 players: {
                     create: [
                         { userId: session.user.id, color: 'green', tokens: '-1,-1,-1,-1', isAI: false },
@@ -48,14 +53,13 @@ async function handlePost(req: NextApiRequest, res: NextApiResponse, session: an
             },
         });
 
-        //console.log('Game created:', game);
+        console.log('Game created:', game);
         res.status(201).json(game);
     } catch (error) {
         console.error('Error creating game:', error);
-        res.status(500).json({ error: 'Error creating game' });
+        res.status(500).json({ error: 'Error creating game', details: error.message });
     }
 }
-
 async function handleGet(req: NextApiRequest, res: NextApiResponse, session: any) {
     try {
         const gameId = req.query.id as string;
