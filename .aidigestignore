@@ -1,0 +1,4 @@
+.babel
+.next
+prisma/dev.db
+.aider*
