@@ -1,9 +1,8 @@
-// lib/gameTypes.ts
 export type PlayerColor = 'red' | 'green' | 'yellow' | 'black';
 
 export interface Player {
   id: string;
-  userId: string;
+  userId: string | null;
   color: PlayerColor;
   tokens: number[];
   isAI: boolean;
@@ -27,4 +26,6 @@ export interface GameState {
   playAITurn: () => Promise<void>;
   checkWinCondition: () => void;
   updateGameState: () => Promise<void>;
+  isBlocked: (position: number) => boolean;
+  endTurn: () => Promise<void>;
 }

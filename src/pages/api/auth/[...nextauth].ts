@@ -9,7 +9,7 @@ import { GetServerSidePropsContext, NextApiRequest, NextApiResponse } from "next
 
 
 
-export const authOptions: AuthOptions= {
+export const authOptions: AuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
@@ -45,58 +45,19 @@ export const authOptions: AuthOptions= {
     signIn: '/login',
   },
   callbacks: {
-    async jwt({ token, user, account, profile }) {
-        // console.log('JWT callback invoked');
-      // console.log('Token before:', token);
-      // console.log('User:', user);
-      // console.log('Account:', account);
-      // console.log('Profile:', profile);
-      // console.log('IsNewUser:', isNewUser);
-      // console.log('Trigger:', trigger);
-      // console.log('----------------------------------------------------------------------------');
-
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        token.user = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        };
-      } else if (account) {
-        token.id = account.id;
-        token.user = {
-          id: account.id,
-          name: profile?.name,
-          email: profile?.email,
-          image: profile?.image,
-        };
+        const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+        token.image = dbUser?.image || user.image;
       }
-
-      //console.log('Token after:', token);
       return token;
     },
-    async session({ session, token }: { session: any, token: any }) {
-      // console.log('Session callback invoked');
-      // console.log('Session before:', session);
-      // console.log('Token:', token);
-      // console.log('----------------------------------------------------------------------------');
-
-      if (token.id) {
-        session.user.id = token.id;
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id = token.id as string;
+        session.user.image = token.image as string | null | undefined;
       }
-
-      if (token.user) {
-        session.user = {
-          ...session.user,
-          id: token.user.id,
-          name: token.user.name,
-          email: token.user.email,
-          image: token.user.image,
-        };
-      }
-
-      //console.log('Session after:', session);
       return session;
     },
   }

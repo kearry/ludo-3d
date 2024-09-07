@@ -54,7 +54,7 @@ export default function GamePage() {
         if (gameId) {
           await loadGame(gameId as string)
         } else {
-          await createGame(session.user.id)
+          await createGame(session.user?.id)
         }
         setGameStarted(true)
       } catch (err) {
