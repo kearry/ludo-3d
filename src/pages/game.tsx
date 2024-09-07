@@ -96,7 +96,10 @@ export default function GamePage() {
       await rollDice()
       log(`Dice rolled: ${useGameStore.getState().dice}`)
       // Check if there are any valid moves after rolling
-      if (!hasValidMove()) {
+      if (hasValidMove()) {
+        log('Valid moves available, player must make a move')
+        // You might want to update the UI here to indicate that the player must move
+      } else {
         log('No valid moves after rolling, ending turn')
         await useGameStore.getState().endTurn()
       }
@@ -179,52 +182,43 @@ export default function GamePage() {
                   <p className="mt-2">Dice: {dice.join(', ')}</p>
                 </div>
                 {isYourTurn && (
-                  <div className="mb-4">
-                    {dice.every(d => d === 0) ? (
-                      <div>
-                        <p className="mb-2 text-blue-600">Click the button below to roll the dice:</p>
-                        <Button onClick={handleRollDice} className="bg-blue-500 hover:bg-blue-700">Roll Dice</Button>
-                      </div>
-                    ) : hasValidMove() ? (
-                      selectedDie === null ? (
-                        <div>
-                          <p className="mb-2 text-blue-600">Select which die to use:</p>
-                          {dice.map((value, index) => (
-                            <Button
-                              key={index}
-                              onClick={() => handleSelectDie(index)}
-                              className="mr-2 bg-blue-500 hover:bg-blue-700"
-                              disabled={value === 0 || !canUseDie(value, index)}
-                            >
-                              Use {value}
-                            </Button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div>
-                          <p className="mb-2 text-blue-600">Select a token to move:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {players[currentPlayer].tokens.map((token, index) => (
-                              <Button
-                                key={index}
-                                onClick={() => handleMoveToken(index)}
-                                disabled={!canMoveToken(players[currentPlayer].id, index)}
-                                className={`${canMoveToken(players[currentPlayer].id, index) ? 'bg-green-500 hover:bg-green-700' : 'bg-gray-300'}`}
-                              >
-                                Move Token {index + 1}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    ) : (
-                      <div>
-                        <p className="mb-2 text-red-600">No valid moves available. Your turn will be skipped.</p>
-                        <Button onClick={handleRollDice} className="bg-blue-500 hover:bg-blue-700">End Turn</Button>
-                      </div>
-                    )}
-                  </div>
-                )}
+  <div className="mb-4">
+    {dice.every(d => d === 0) ? (
+      <div>
+        <p className="mb-2 text-blue-600">Click the button below to roll the dice:</p>
+        <Button onClick={handleRollDice} className="bg-blue-500 hover:bg-blue-700">Roll Dice</Button>
+      </div>
+    ) : hasValidMove() ? (
+      selectedDie === null ? (
+        <div>
+          <p className="mb-2 text-blue-600">Select which die to use:</p>
+          {dice.map((value, index) => (
+            <Button key={index} onClick={() => handleSelectDie(index)} className="mr-2 bg-blue-500 hover:bg-blue-700" disabled={value === 0 || !canUseDie(value, index)} >
+              Use {value}
+            </Button>
+          ))}
+        </div>
+      ) : (
+        <div>
+          <p className="mb-2 text-blue-600">Select a token to move:</p>
+          <div className="flex flex-wrap gap-2">
+            {players[currentPlayer].tokens.map((token, index) => (
+              <Button key={index} onClick={() => handleMoveToken(index)} disabled={!canMoveToken(players[currentPlayer].id, index)} className={`${canMoveToken(players[currentPlayer].id, index) ? 'bg-green-500 hover:bg-green-700' : 'bg-gray-300'}`} >
+                Move Token {index + 1}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )
+    ) : (
+      <div>
+        <p className="mb-2 text-red-600">No valid moves available. Your turn will be skipped.</p>
+        <Button onClick={handleRollDice} className="bg-blue-500 hover:bg-blue-700">End Turn</Button>
+      </div>
+    )}
+  </div>
+)}
+
                 {winner && (
                   <Alert>
                     <AlertDescription>
