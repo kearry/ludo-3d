@@ -10,12 +10,7 @@ export interface SquareProps {
     color: string;
     borderColor: string;
     border: boolean;
-}
-
-export interface BoardProps {
-    selectedTokenId: number | null;
-    onTokenClick: (tokenId: number) => void;
-    tokens?: TokenModelProps[]; // Make tokens optional
+    showDebugText?: boolean; // Added optional parameter
 }
 
 export interface TokenModelProps {
@@ -24,6 +19,12 @@ export interface TokenModelProps {
     position: { x: number; y: number; z: number };
     isSelected: boolean;
     onClick: () => void;
+}
+
+export interface BoardProps {
+    selectedTokenId: number | null;
+    onTokenClick: (tokenId: number) => void;
+    tokens?: TokenModelProps[]; // Make tokens optional
 }
 
 export interface PolygonProps {
