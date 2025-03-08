@@ -61,17 +61,11 @@ const Board: React.FC<BoardProps> = ({ selectedTokenId, onTokenClick }) => {
                     break;
                 }
             }
-            if (isTrackSquare ) {
+            //if (isTrackSquare ) {
                 squares.push(
-                    <Square
-                        key={`${x}-${y}`}
-                        position={[x - GRID_SIZE / 2, y - GRID_SIZE / 2, 0.375]}
-                        border={isTrackSquare}
-                        color={color}
-                        borderColor="black"
-                    />
+                    <Square key={`${x}-${y}`} position={[x - GRID_SIZE / 2, y - GRID_SIZE / 2, 0.375]} border={isTrackSquare} color={color} borderColor="black" />
                 );
-            }
+            //}
         }
     }
 

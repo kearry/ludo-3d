@@ -35,3 +35,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .aider*
+
+prisma/dev.db
+project_summary.md
